@@ -7,7 +7,12 @@ module.exports = function init (conf) {
     self = this;
     config = conf;
 
-    debugger;
+    // hashchange handler
+    $(window).on('hashchange', function () {
+        var page = $('.page.' + window.location.hash.substring(1), self.dom);
+        $('.page', self.dom).hide();
+        page.show();
+    })
 
 };
 
