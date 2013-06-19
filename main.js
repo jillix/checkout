@@ -1,3 +1,4 @@
+M.wrap('github/jillix/checkout/dev/main.js', function (require, module, exports) {
 var self;
 var form;
 var config;
@@ -15,8 +16,16 @@ module.exports = function init (conf) {
     // hashchange handler
     $(window).on('hashchange', function () {
         showPageFromHash();
-    })
+    });
 
+    $('.showAlt', self.dom).on('change', function() {
+        var show = $(this).prop('checked');
+        if (show) {
+            $('.alt', self.dom).show();
+        } else {
+            $('.alt', self.dom).hide();
+        }
+    });
 };
 
 function showPageFromHash () {
@@ -24,3 +33,5 @@ function showPageFromHash () {
     $('.page', self.dom).hide();
     page.show();
 }
+
+return module; });
