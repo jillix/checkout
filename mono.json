@@ -1,0 +1,14 @@
+{
+    "source": "github",
+    "owner": "jillix",
+    "name": "checkout",
+    "dependencies": [
+        "/main.js",
+        "http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"
+    ],
+    "operations": [
+        { "file": "operations.js", "function": "getPageData" },
+        { "file": "operations.js", "function": "savePageData" },
+        { "file": "operations.js", "function": "placeOrder" }
+    ]
+}
