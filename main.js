@@ -26,12 +26,28 @@ module.exports = function init (conf) {
             $('.alt', self.dom).hide();
         }
     });
+
 };
 
 function showPageFromHash () {
     var page = $('.page.' + window.location.hash.substring(1), self.dom);
     $('.page', self.dom).hide();
     page.show();
+
+    var formInPage = page.find("form");
+
+    if (formInPage.length) {
+
+        formInPage.off("submit");
+        formInPage.on("submit", function () {
+
+            self.link("savePageData", function (err, data) {
+                // show messages
+            });
+
+            return false;
+        });
+    }
 }
 
 return module; });
