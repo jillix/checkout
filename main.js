@@ -1,4 +1,3 @@
-M.wrap('github/jillix/checkout/dev/main.js', function (require, module, exports) {
 var self;
 var form;
 var config;
@@ -49,5 +48,3 @@ function showPageFromHash () {
         });
     }
 }
-
-return module; });
