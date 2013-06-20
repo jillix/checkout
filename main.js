@@ -45,6 +45,7 @@ function showPageFromHash () {
 
             var data = {
                 page: hash,
+                alt: $(".showAlt").prop("checked"),
                 form: formInPage.serializeArray()
             };
 
@@ -53,22 +54,24 @@ function showPageFromHash () {
                 try { errors = JSON.parse(errors);
                 } catch (e) { return; }
 
+                $(".notification").remove();
+
                 if (errors) {
                     for (var i in errors) {
-                        var notification = Notification.new(errors[i].err, "error");
+                        var notification = Notification.new(errors[i].err, "error", ["notification"]);
                         var input;
 
                         input = $("[name='" + errors[i].name + "']", self.dom);
 
-                        // TODO Why doesn't it appear?
                         input.after(notification);
-                        Notification.show(notification);
                     }
+
+                    $(".notification").fadeIn();
 
                     return;
                 }
 
-                window.location = "/orders#review";
+                window.location = "/order#review";
             });
 
             return false;

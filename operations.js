@@ -48,9 +48,19 @@ exports.savePageData = function(link) {
         var input = data.form[i];
 
         if (!input.value) {
-            // TODO is it required?
-            response.push({"name": input.name, "err": "This cannot be empty."});
-            valid = false;
+            // it is an Alt item
+            if (input.name.indexOf("Alt") !== -1) {
+                if (link.data.alt) {
+                    // TODO is it required?
+                    response.push({"name": input.name, "err": "This cannot be empty."});
+                    valid = false;
+                }
+            }
+            else {
+                // TODO is it required?
+                response.push({"name": input.name, "err": "This cannot be empty."});
+                valid = false;
+            }
         }
     }
 
