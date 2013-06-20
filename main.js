@@ -29,7 +29,8 @@ module.exports = function init (conf) {
 };
 
 function showPageFromHash () {
-    var page = $('.page.' + window.location.hash.substring(1), self.dom);
+    var hash = window.location.hash.substring(1);
+    var page = $('.page.' + hash, self.dom);
     $('.page', self.dom).hide();
     page.show();
 
@@ -40,8 +41,24 @@ function showPageFromHash () {
         formInPage.off("submit");
         formInPage.on("submit", function () {
 
-            self.link("savePageData", function (err, data) {
-                // show messages
+            var data = {
+                page: hash,
+                form: formInPage.serializeArray()
+            };
+
+            self.link("savePageData", { data: data }, function (errors, data) {
+
+                if (errors) {
+                    for (var i in errors) {
+                        var notification = Notification.new(errors[i].err, "error");
+                        $("*[name=" + errors[i].name + "]").after(notification);
+                        Notification.show(notification);
+                    }
+
+                    return;
+                }
+
+                window.location = "/orders#review";
             });
 
             return false;
