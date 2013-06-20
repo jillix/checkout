@@ -15,7 +15,11 @@ exports.getPageData = function(link) {
     }
 
     link.session.checkout = link.session.checkout || {};
-    var response = link.session.checkout[data.page] || {};
+
+    // TODO Why now is it empty?!
+    console.log(link.session.checkout);
+
+    var response = link.session.checkout[data.page];
 
     link.send(200, response);
 };
@@ -71,6 +75,8 @@ exports.savePageData = function(link) {
 
     link.session.checkout = link.session.checkout || {};
     link.session.checkout[data.page] = data.form;
+
+    console.log(link.session.checkout);
 
     link.send(200);
 };

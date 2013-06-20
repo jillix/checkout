@@ -27,14 +27,38 @@ module.exports = function init (conf) {
     });
 
 
-    // load cart review table in its container
-    for (var container in config.modules) {
-        M("#" + container, config.modules[container]);
-    }
 };
 
 function showPageFromHash () {
+
     var hash = window.location.hash.substring(1);
+
+    // review hash
+    if (hash === "review") {
+
+        // load cart review table in its container
+        for (var container in config.modules) {
+            $("#" + container).html("");
+            M("#" + container, config.modules[container]);
+        }
+
+        self.link("getPageData", { data: { page: "address" } }, function (err, data) {
+            if (err) { return; }
+
+            if (!data) { window.location = "/order#address"; return; }
+        });
+    }
+
+    if (hash === "address") {
+        self.link("getPageData", { data: { page: "address" } }, function (err, data) {
+            if (err || !data) { return; }
+
+            for (var i in data) {
+                $("[data-name='" + data[i].name + "']", self.dom).text(data[i].value);
+            }
+        });
+    }
+
     var page = $('.page.' + hash, self.dom);
     $('.page', self.dom).hide();
     page.show();
