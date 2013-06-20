@@ -26,6 +26,11 @@ module.exports = function init (conf) {
         }
     });
 
+
+    // load cart review table in its container
+    for (var container in config.modules) {
+        M("#" + container, config.modules[container]);
+    }
 };
 
 function showPageFromHash () {
