@@ -39,6 +39,8 @@ function showPageFromHash () {
     if (formInPage.length) {
 
         formInPage.off("submit");
+
+        // submit data
         formInPage.on("submit", function () {
 
             var data = {
@@ -48,10 +50,18 @@ function showPageFromHash () {
 
             self.link("savePageData", { data: data }, function (errors, data) {
 
+                try { errors = JSON.parse(errors);
+                } catch (e) { return; }
+
                 if (errors) {
                     for (var i in errors) {
                         var notification = Notification.new(errors[i].err, "error");
-                        $("*[name=" + errors[i].name + "]").after(notification);
+                        var input;
+
+                        input = $("[name='" + errors[i].name + "']", self.dom);
+
+                        // TODO Why doesn't it appear?
+                        input.after(notification);
                         Notification.show(notification);
                     }
 
