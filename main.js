@@ -17,6 +17,7 @@ module.exports = function init (conf) {
         showPageFromHash();
     });
 
+    // click on the checkbox
     $('.showAlt', self.dom).on('change', function() {
         var show = $(this).prop('checked');
         if (show) {
@@ -25,13 +26,22 @@ module.exports = function init (conf) {
             $('.alt', self.dom).hide();
         }
     });
-
-
 };
 
 function showPageFromHash () {
 
     var hash = window.location.hash.substring(1);
+
+    // payment
+    if (hash === "payment") {
+        self.link("getPageData", { data: { page: "review" } }, function (err, data) {
+            if (err || !data) { window.location = "/order#review"; return; }
+
+            for (var i in data) {
+                $("[data-field='" + data[i].name + "']", self.dom).text(data[i].value);
+            }
+        });
+    }
 
     // review hash
     if (hash === "review") {
@@ -43,32 +53,62 @@ function showPageFromHash () {
         }
 
         self.link("getPageData", { data: { page: "address" } }, function (err, data) {
-            if (err) { return; }
-
-            if (!data) { window.location = "/order#address"; return; }
+            if (err || !data) { window.location = "/order#address"; return; }
 
             for (var i in data) {
                 $("[data-field='" + data[i].name + "']", self.dom).text(data[i].value);
             }
         });
-    }
 
-    if (hash === "address") {
-        self.link("getPageData", { data: { page: "address" } }, function (err, data) {
+        self.link("getPageData", { data: { page: "review" } }, function (err, data) {
             if (err || !data) { return; }
 
-            for (var i in data) {
-                $("[data-name='" + data[i].name + "']", self.dom).val(data[i].value);
-            }
+            var checkbox = data[0];
+
+            $("[name='" + checkbox.name + "']").prop("checked", (checkbox.value === "on" ? true : false));
         });
     }
 
+    // address hash
+    if (hash === "address") {
+        $(".notification").remove();
+        self.link("getPageData", { data: { page: "address" } }, function (err, data) {
+            if (err) {
+
+                try { err = JSON.parse(err);
+                } catch (e) { return; }
+
+                data = err.data;
+                for (var i in data) {
+                    $("[data-name='" + data[i].name + "']", self.dom).val(data[i].value);
+                }
+
+                var errors = err.errors;
+
+                // add the new notifications
+                if (errors) {
+                    showErrors(errors);
+                    return;
+                }
+
+            }
+            if (!data) { return; }
+            for (var i in data) {
+                $("[data-name='" + data[i].name + "']", self.dom).val(data[i].value);
+            }
+
+        });
+    }
+
+    // show current page
     var page = $('.page.' + hash, self.dom);
     $('.page', self.dom).hide();
     page.show();
 
+    // find form in the page
     var formInPage = page.find("form");
 
+    // form found
     if (formInPage.length) {
 
         formInPage.off("submit");
@@ -82,32 +122,52 @@ function showPageFromHash () {
                 form: formInPage.serializeArray()
             };
 
+            // save and validate form data
             self.link("savePageData", { data: data }, function (errors, data) {
 
                 try { errors = JSON.parse(errors);
                 } catch (e) { return; }
 
-                $(".notification").remove();
-
+                // add the new notifications
                 if (errors) {
-                    for (var i in errors) {
-                        var notification = Notification.new(errors[i].err, "error", ["notification"]);
-                        var input;
-
-                        input = $("[name='" + errors[i].name + "']", self.dom);
-
-                        input.after(notification);
-                    }
-
-                    $(".notification").fadeIn();
-
+                    showErrors(errors);
                     return;
                 }
 
-                window.location = "/order#review";
+                // data was validated and no erros found
+                if (hash === "address") {
+                    window.location = "/order#review";
+                    return;
+                }
+
+                if (hash === "review") {
+                    window.location = "/order#payment";
+                    return;
+                }
             });
 
             return false;
         });
     }
+}
+
+function showErrors (errors) {
+
+    // remove all notifications
+    $(".notification").remove();
+
+    for (var i in errors) {
+        var notification = Notification.new(errors[i].err, "error", ["notification"]);
+        var input;
+
+        input = $("[name='" + errors[i].name + "']", self.dom);
+
+        if (input.attr("type") === "checkbox") {
+            input = input.parent();
+        }
+
+        input.after(notification);
+    }
+
+    $(".notification").fadeIn();
 }
