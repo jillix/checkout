@@ -46,6 +46,10 @@ function showPageFromHash () {
             if (err) { return; }
 
             if (!data) { window.location = "/order#address"; return; }
+
+            for (var i in data) {
+                $("[data-field='" + data[i].name + "']", self.dom).text(data[i].value);
+            }
         });
     }
 
@@ -54,7 +58,7 @@ function showPageFromHash () {
             if (err || !data) { return; }
 
             for (var i in data) {
-                $("[data-name='" + data[i].name + "']", self.dom).text(data[i].value);
+                $("[data-name='" + data[i].name + "']", self.dom).val(data[i].value);
             }
         });
     }
