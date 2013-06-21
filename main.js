@@ -32,6 +32,14 @@ function showPageFromHash () {
 
     var hash = window.location.hash.substring(1);
 
+    // confirmation
+
+    if (hash === "confirmation") {
+        self.link("placeOrder", function (err, data) {
+            console.log(err, data);
+        });
+    }
+
     // payment
     if (hash === "payment") {
         self.link("getPageData", { data: { page: "review" } }, function (err, data) {

@@ -73,7 +73,22 @@ exports.savePageData = function(link) {
 };
 
 exports.placeOrder = function(link) {
-    link.send(200);
+
+    // validate address
+    if (!link.params || !link.params.orderFile) {
+        link.send(400, "Missing orderFile from placeOrder operation parameters.");
+        return;
+    }
+
+    var Order = require(M.app.getPath() + '/' + link.params.orderFile);
+    Order.start(link.session, link.params, function (err, data) {
+        if (err) {
+            link.send(400, err);
+            return;
+        }
+
+        link.send(200, data);
+    });
 };
 
 function validateForm (page, formArray, alt) {
