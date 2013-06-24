@@ -30,133 +30,120 @@ module.exports = function init (conf) {
 
 function showPageFromHash () {
 
+    $(".notification").remove();
     var hash = window.location.hash.substring(1);
 
-    // confirmation
-
-    if (hash === "confirmation") {
-        self.link("placeOrder", function (err, data) {
-            console.log(err, data);
-        });
+    // the cart is outsourced to the bind-cart module
+    if (hash === 'cart') {
+        return;
     }
 
-    // payment
-    if (hash === "payment") {
-        self.link("getPageData", { data: { page: "review" } }, function (err, data) {
-            if (err || !data) { window.location = "/order#review"; return; }
+    self.link('getPageData', { data: { page: hash } }, function (err, data) {
 
-            for (var i in data) {
-                $("[data-field='" + data[i].name + "']", self.dom).text(data[i].value);
-            }
-        });
-    }
-
-    // review hash
-    if (hash === "review") {
-
-        // load cart review table in its container
-        for (var container in config.modules) {
-            $("#" + container).html("");
-            M("#" + container, config.modules[container]);
+        if (err) {
+            alert(err);
+            return;
         }
 
-        self.link("getPageData", { data: { page: "address" } }, function (err, data) {
-            if (err || !data) { window.location = "/order#address"; return; }
+        if (hash !== data.page) {
+            window.location.hash = data.page;
+            return;
+        }
 
-            for (var i in data) {
-                $("[data-field='" + data[i].name + "']", self.dom).text(data[i].value);
+        // show current page
+        var page = $('.page.' + data.page, self.dom);
+        $('.page', self.dom).hide();
+        page.show();
+
+        // fill in the form data
+        for (var i in data.data) {
+            var elem = $('[data-name="' + data.data[i].name + '"]', page);
+            switch (elem.prop('tagName')) {
+                case 'INPUT':
+                    if (elem.attr('type') === 'checkbox') {
+                        elem.prop('checked', !!data.data[i].value);
+                    }
+                case 'SELECT':
+                case 'TEXTAREA':
+                    elem.val(data.data[i].value);
+                    break;
+                default:
+                    elem.text(data.data[i].value);
+                    break;
             }
-        });
+        }
 
-        self.link("getPageData", { data: { page: "review" } }, function (err, data) {
-            if (err || !data) { return; }
-
-            var checkbox = data[0];
-
-            $("[name='" + checkbox.name + "']").prop("checked", (checkbox.value === "on" ? true : false));
-        });
-    }
-
-    // address hash
-    if (hash === "address") {
-        $(".notification").remove();
-        self.link("getPageData", { data: { page: "address" } }, function (err, data) {
-            if (err) {
-
-                try { err = JSON.parse(err);
-                } catch (e) { return; }
-
-                data = err.data;
-                for (var i in data) {
-                    $("[data-name='" + data[i].name + "']", self.dom).val(data[i].value);
-                }
-
-                var errors = err.errors;
-
-                // add the new notifications
-                if (errors) {
-                    showErrors(errors);
-                    return;
-                }
-
+        // load cart review table in its container
+        if (data.page === 'review') {
+            for (var container in config.modules) {
+                $("#" + container).html("");
+                M("#" + container, config.modules[container]);
             }
-            if (!data) { return; }
-            for (var i in data) {
-                $("[data-name='" + data[i].name + "']", self.dom).val(data[i].value);
-            }
+            page.find('[name="accept"]').prop('checked', false);
+        } else if (data.page === 'confirmation') {
+            self.link('placeOrder', function (err, data) {
+                console.log(err, data);
+            });
+        }
 
-        });
-    }
+        // show the form errors if any
+        if (data.errors && data.errors.length) {
+            showErrors(data.errors);
+        }
 
-    // show current page
-    var page = $('.page.' + hash, self.dom);
-    $('.page', self.dom).hide();
-    page.show();
-
-    // find form in the page
-    var formInPage = page.find("form");
-
-    // form found
-    if (formInPage.length) {
-
-        formInPage.off("submit");
+        // find form in the page
+        var formInPage = page.find('form');
+        formInPage.off('submit');
 
         // submit data
-        formInPage.on("submit", function () {
+        formInPage.on('submit', function () {
 
             var data = {
                 page: hash,
-                alt: $(".showAlt").prop("checked"),
                 form: formInPage.serializeArray()
             };
 
             // save and validate form data
-            self.link("savePageData", { data: data }, function (errors, data) {
+            self.link("savePageData", { data: data }, function (err, data) {
 
-                try { errors = JSON.parse(errors);
-                } catch (e) { return; }
-
-                // add the new notifications
-                if (errors) {
-                    showErrors(errors);
+                if (err) {
+                    alert(err);
                     return;
                 }
 
-                // data was validated and no erros found
-                if (hash === "address") {
-                    window.location = "/order#review";
+                if (hash !== data.page) {
+                    window.location.hash = data.page;
                     return;
                 }
 
-                if (hash === "review") {
-                    window.location = "/order#payment";
-                    return;
+                // show the form errors if any
+                if (data.errors && data.errors.length) {
+                    // show current page
+                    var page = $('.page.' + data.page, self.dom);
+                    $('.page', self.dom).hide();
+                    page.show();
+
+                    // fill in the form data
+                    for (var i in data.data) {
+                        var elem = $('[data-name="' + data.data[i].name + '"]', page);
+                        elem.val(data.data[i].value);
+                    }
+
+                    showErrors(data.errors);
+                } else {
+                    var nextHash = {
+                        address: 'review',
+                        review: 'payment',
+                        payment: 'confirmation'
+                    };
+                    // data was validated and no errors found
+                    window.location.hash = nextHash[data.page];
                 }
             });
 
             return false;
         });
-    }
+    });
 }
 
 function showErrors (errors) {
@@ -179,3 +166,4 @@ function showErrors (errors) {
 
     $(".notification").fadeIn();
 }
+

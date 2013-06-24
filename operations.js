@@ -1,5 +1,78 @@
 var crypto = require('crypto');
 
+var ADDRESS_FIELD_VALIDATORS = {
+    firstname: function(value) {
+        if (!value.trim()) {
+            return 'This is mandatory';
+        }
+    }
+};
+
+var REVIEW_FIELD_VALIDATORS = {
+    accept: function(value) {
+        if (!value) {
+            return 'You must accept the Terms';
+        }
+    }
+};
+
+function validateAddress(dataArray) {
+    var errors = [];
+    for (var i in dataArray) {
+        var validator = ADDRESS_FIELD_VALIDATORS[dataArray[i].name];
+        if (typeof validator === 'function') {
+            var error = validator(dataArray[i].value);
+            if (error) {
+                errors.push({ name: dataArray[i].name, err: error });
+            }
+        }
+    }
+    return errors;
+}
+
+function validateReview(dataArray) {
+
+    var errors = [];
+
+    var found = false;
+    for (var i in dataArray) {
+        if (dataArray[i].name === 'accept') {
+            dataArray[i].value = dataArray[i].value === 'on' || dataArray[i].value ===  true;
+            found = true;
+        }
+    }
+    if (!found) {
+        dataArray.push({ name: 'accept', value: false });
+    }
+
+    for (var i in dataArray) {
+        var validator = REVIEW_FIELD_VALIDATORS[dataArray[i].name];
+        if (typeof validator === 'function') {
+            var error = validator(dataArray[i].value);
+            if (error) {
+                errors.push({ name: dataArray[i].name, err: error });
+            }
+        }
+    }
+    return errors;
+}
+
+var PAGE_FORM_VALIDATORS = {
+    address: validateAddress,
+    review: validateReview
+};
+
+function validatePage(page, dataArray) {
+    var pageValidator = PAGE_FORM_VALIDATORS[page];
+    var errors;
+    if (typeof pageValidator === 'function') {
+        errors = pageValidator(dataArray);
+    }
+    return errors;
+}
+
+/* =============================================== */
+
 exports.getPageData = function(link) {
 
     var data = link.data;
@@ -14,18 +87,50 @@ exports.getPageData = function(link) {
         return;
     }
 
-    link.session.checkout = link.session.checkout || {};
-    var formArray = link.session.checkout[data.page];
+    var checkout = link.session.checkout || {};
+    var pageData = validateFormNew(link, checkout, data.page);
 
-    var res = validateForm(data.page, formArray, data.alt);
-
-    if (!res.value && res.errors.length) {
-        link.send(400, { "errors": res.errors, "data": formArray });
-        return;
+    if (pageData.page === 'review') {
+        pageData.data = pageData.data || [];
+        pageData.data = pageData.data.concat(checkout.address);
     }
 
-    link.send(200, formArray);
+    link.send(200, pageData);
 };
+
+var PAGE_ORDER = ['address', 'review', 'payment', 'confirmation'];
+
+function validateFormNew (link, checkout, page) {
+
+    var result = {
+        data: [],
+        errors: [],
+        page: page
+    };
+
+    for (var i in PAGE_ORDER) {
+        result.page = PAGE_ORDER[i];
+        result.data = checkout[PAGE_ORDER[i]];
+
+        // if no data was saved so far for this page show no errors
+        if (!result.data) {
+            break;
+        }
+
+        // validate the up to the current page
+        result.errors = validatePage(result.page, result.data);
+        if (result.errors && result.errors.length) {
+            break;
+        }
+
+        // we reached the desired page
+        if (result.page === page) {
+            break;
+        }
+    }
+
+    return result;
+}
 
 exports.savePageData = function(link) {
 
@@ -46,7 +151,13 @@ exports.savePageData = function(link) {
         return;
     }
 
-    // TODO validate data
+    var errors = validatePage(data.page, data.form);
+
+    // we found an error
+    if (errors && errors.length) {
+        link.send(200, { data: data.form, errors: errors, page: data.page });
+        return;
+    }
 
     var valid = true;
 
@@ -60,15 +171,14 @@ exports.savePageData = function(link) {
             return;
         }
 
-        var response = validateForm(data.page, data.form, data.alt);
-        valid = response.value;
+        var formData = validateFormNew(link, checkout, data.page);
 
-        if (!valid) {
-            link.send(400, response.errors);
-            return;
+        // reset the accept field on every change
+        if (checkout['review']) {
+            checkout['review'].accept = false;
         }
 
-        link.send(200);
+        link.send(200, formData);
     });
 };
 
