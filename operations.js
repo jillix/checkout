@@ -1,9 +1,32 @@
 var crypto = require('crypto');
 
+function nonEmpty40(value) {
+    if (!value.trim()) {
+        return 'This is mandatory';
+    }
+    if (value.length > 40) {
+        return 'This must be shorter than 40 characters';
+    }
+};
+
 var ADDRESS_FIELD_VALIDATORS = {
-    firstname: function(value) {
-        if (!value.trim()) {
-            return 'This is mandatory';
+    firstname: nonEmpty40,
+    lastname: nonEmpty40,
+    street: nonEmpty40,
+    city: nonEmpty40,
+    zip: function(value) {
+        var zip = parseInt(value);
+        if (isNaN(zip) || zip > 9999 || zip < 1000 || value.length != 4) {
+            return 'This is not a valid zip code';
+        }
+    },
+    email: function (value) {
+        if (value.length > 50) {
+            return 'You have a pretty long email address';
+        }
+        var re = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+        if (!re.test(value)) {
+            return 'This is not a valid email address';
         }
     }
 };
