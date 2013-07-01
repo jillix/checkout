@@ -39,10 +39,19 @@ var REVIEW_FIELD_VALIDATORS = {
     }
 };
 
-function validateAddress(dataArray) {
+function validateAddress(dataArray, hasAlt) {
     var errors = [];
     for (var i in dataArray) {
-        var validator = ADDRESS_FIELD_VALIDATORS[dataArray[i].name];
+
+        var name = dataArray[i].name;
+
+        if (name.indexOf("delivery") !== -1 && !hasAlt) {
+            return errors;
+        }
+
+        name = name.substring(name.lastIndexOf(".") + 1);
+
+        var validator = ADDRESS_FIELD_VALIDATORS[name];
         if (typeof validator === 'function') {
             var error = validator(dataArray[i].value);
             if (error) {
@@ -85,11 +94,11 @@ var PAGE_FORM_VALIDATORS = {
     review: validateReview
 };
 
-function validatePage(page, dataArray) {
+function validatePage(page, dataArray, hasAlt) {
     var pageValidator = PAGE_FORM_VALIDATORS[page];
     var errors;
     if (typeof pageValidator === 'function') {
-        errors = pageValidator(dataArray);
+        errors = pageValidator(dataArray, hasAlt);
     }
     return errors;
 }
@@ -169,12 +178,21 @@ exports.savePageData = function(link) {
         return;
     }
 
-    if (!data.page || !data.form) {
+    if (!data.form) {
         link.send(400, "Missing form key of data.");
         return;
     }
 
-    var errors = validatePage(data.page, data.form);
+    var hasAlt = false;
+    for (var i in data.form) {
+        if (data.form[i].name === "hasAlt") {
+            hasAlt = true;
+            break;
+        }
+    }
+
+    var errors = validatePage(data.page, data.form, hasAlt);
+
 
     // we found an error
     if (errors && errors.length) {
@@ -183,6 +201,24 @@ exports.savePageData = function(link) {
     }
 
     var valid = true;
+
+    if (!hasAlt) {
+        for (var i = 0; i < data.form.length; ++i) {
+
+            var info = data.form[i].name.split(".");
+
+            if (info[0] === "delivery") {
+                for (var j = 0; j < data.form.length; ++j) {
+                    var secundInfo = data.form[j].name.split(".");
+
+                    if (secundInfo[1] === info[1]) {
+                        data.form[i].value = data.form[j].value;
+                        break;
+                    }
+                }
+            }
+        }
+    }
 
     var checkout = link.session.checkout || {};
     checkout[data.page] = data.form;
