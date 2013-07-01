@@ -1,11 +1,14 @@
 var crypto = require('crypto');
 
-function nonEmpty40(value) {
+function nonEmpty40(value, length) {
     if (!value.trim()) {
         return 'This is mandatory';
     }
-    if (value.length > 40) {
-        return 'This must be shorter than 40 characters';
+
+    length = length || 40;
+
+    if (value.length > length) {
+        return 'This must be shorter than ' + length + ' characters';
     }
 };
 
@@ -14,6 +17,10 @@ var ADDRESS_FIELD_VALIDATORS = {
     lastname: nonEmpty40,
     street: nonEmpty40,
     city: nonEmpty40,
+    phone: nonEmpty40,
+    comment: function (value) {
+        return nonEmpty40 (value, 500);
+    },
     zip: function(value) {
         var zip = parseInt(value);
         if (isNaN(zip) || zip > 9999 || zip < 1000 || value.length != 4) {
@@ -259,49 +266,3 @@ exports.placeOrder = function(link) {
         link.send(200, data);
     });
 };
-
-function validateForm (page, formArray, alt) {
-
-    var res = {
-        value: null,
-        errors: []
-    }
-
-    if (!formArray) {
-        return res;
-    }
-
-    var valid = true;
-    var response = [];
-
-    // review form and checkbox not checked
-    if (page === "review" && !formArray.length) {
-        valid = false;
-        response.push({"name": "accept", "err": "You must agree the terms."});
-    }
-
-    for (var i in formArray) {
-
-        var input = formArray[i];
-
-        if (!input.value) {
-            // it is an Alt item
-            if (input.name.indexOf("Alt") !== -1) {
-                if (alt) {
-                    // TODO is it required?
-                    response.push({"name": input.name, "err": "This cannot be empty."});
-                    valid = false;
-                }
-            }
-            else {
-                // TODO is it required?
-                response.push({"name": input.name, "err": "This cannot be empty."});
-                valid = false;
-            }
-        }
-    }
-
-    res.value = valid;
-    res.errors = response
-    return res;
-}
