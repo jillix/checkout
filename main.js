@@ -50,6 +50,8 @@ function showPageFromHash () {
             return;
         }
 
+        self.emit(data.page);
+
         // show current page
         var page = $('.page.' + data.page, self.dom);
         $('.page', self.dom).hide();
@@ -75,10 +77,11 @@ function showPageFromHash () {
 
         // load cart review table in its container
         if (data.page === 'review') {
+
             for (var container in config.modules) {
-                $("#" + container).html("");
                 M("#" + container, config.modules[container]);
             }
+
             page.find('[name="accept"]').prop('checked', false);
         } else if (data.page === 'confirmation') {
             self.link('placeOrder', function (err, data) {
@@ -166,4 +169,3 @@ function showErrors (errors) {
 
     $(".notification").fadeIn();
 }
-
