@@ -1,14 +1,12 @@
 var crypto = require('crypto');
 
-function nonEmpty40(value, length) {
+function nonEmpty40(value) {
     if (!value.trim()) {
         return 'This is mandatory';
     }
 
-    length = length || 40;
-
-    if (value.length > length) {
-        return 'This must be shorter than ' + length + ' characters';
+    if (value.length > 40) {
+        return 'This must be shorter than 40 characters';
     }
 };
 
@@ -17,10 +15,7 @@ var ADDRESS_FIELD_VALIDATORS = {
     lastname: nonEmpty40,
     street: nonEmpty40,
     city: nonEmpty40,
-    phone: nonEmpty40,
-    comment: function (value) {
-        return nonEmpty40 (value, 500);
-    },
+    tel: nonEmpty40,
     zip: function(value) {
         var zip = parseInt(value);
         if (isNaN(zip) || zip > 9999 || zip < 1000 || value.length != 4) {
