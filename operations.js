@@ -148,15 +148,15 @@ exports.getPageData = function(link) {
                 var passphrase = settings.payments.passphrase;
 
                 var formData = {
-                    PSPID: pspid
+                    PSPID: pspid,
+                    ORDERID: 'dummy_' + new Date().getTime(),
+                    LANGUAGE: 'de_CH',
+                    CURRENCY: 'CHF',
+                    AMOUNT: checkout.total
                 };
 
-                // TODO add more data to the form data object from the cart and the checkout object
-                formData.LANGUAGE = 'de_CH';
-
-                var fname, lname;
-
                 // user data
+                var fname, lname;
                 for (var i in checkout.address) {
                     switch (checkout.address[i].name) {
                         case 'invoice.firstname':
