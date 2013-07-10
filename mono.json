@@ -9,7 +9,6 @@
     "operations": [
         { "file": "operations.js", "function": "getPageData" },
         { "file": "operations.js", "function": "savePageData" },
-        { "file": "operations.js", "function": "getFormData" },
         { "file": "operations.js", "function": "placeOrder" }
     ]
 }

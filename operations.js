@@ -122,26 +122,6 @@ exports.getPageData = function(link) {
         return;
     }
 
-    var checkout = link.session.checkout || {};
-    var pageData = validateFormNew(link, checkout, data.page);
-
-    if (pageData.page === 'review') {
-        pageData.data = pageData.data || [];
-        pageData.data = pageData.data.concat(checkout.address);
-    }
-
-    link.send(200, pageData);
-};
-
-exports.getFormData = function(link) {
-
-    var data = link.data;
-
-    if (!data) {
-        link.send(400, "Missing data.");
-        return;
-    }
-
     getSettings(link.params.dsSettings, function(err, settings) {
 
         if (err) {
@@ -149,23 +129,38 @@ exports.getFormData = function(link) {
             return;
         }
 
-        settings = settings || {};
-        settings.payments = settings.payment || {};
-
-        var pspid = settings.payments.pspid;
-        var passphrase = settings.payments.passphrase;
-
-        var formData = {
-            PSPID: pspid
-        };
-
         var checkout = link.session.checkout || {};
-        // TODO add more data to the form data object
+        var pageData = validateFormNew(link, checkout, data.page);
 
-        // sign the form data object
-        formData = hash.sign(formData, passphrase);
+        switch (pageData.page) {
 
-        link.send(200, formData);
+            case 'review':
+                pageData.data = pageData.data || [];
+                pageData.data = pageData.data.concat(checkout.address);
+                break;
+
+            case 'payment':
+
+                settings = settings || {};
+                settings.payments = settings.payment || {};
+
+                var pspid = settings.payments.pspid;
+                var passphrase = settings.payments.passphrase;
+
+                var formData = {
+                    PSPID: pspid
+                };
+
+                var checkout = link.session.checkout || {};
+                // TODO add more data to the form data object
+
+                // sign the form data object
+                formData = hash.sign(formData, passphrase);
+                pageData.data = formData;
+                break;
+        }
+
+        link.send(200, pageData);
     });
 };
 

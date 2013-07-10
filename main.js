@@ -83,6 +83,15 @@ function showPageFromHash () {
             }
 
             page.find('[name="accept"]').prop('checked', false);
+        } else if (data.page === 'payment') {
+            var form = page.find('form');
+            for (var i in data.data) {
+                var input = $('input')
+                    .attr('type', 'hidden')
+                    .attr('name', i)
+                    .val(data.data[i]);
+                input.appendTo(form);
+            }
         } else if (data.page === 'confirmation') {
             self.link('placeOrder', function (err, data) {
                 console.log(err, data);
@@ -169,3 +178,4 @@ function showErrors (errors) {
 
     $(".notification").fadeIn();
 }
+

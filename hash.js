@@ -8,14 +8,17 @@ exports.sign = function (obj, pass) {
     // uppercase object
     var uObj = {};
 
+    if (!obj || !pass) {
+        return null;
+    }
+
     // keys to uppercase
     for (var key in obj) {
-        var keyToUpper = key.toUpperCase();
         var value = obj[key];
-        delete obj[key];
-
-        obj[keyToUpper] = value;
-        uObj[keyToUpper] = value;
+        if (["string", "number", "boolean"].indexOf(typeof value) === -1) {
+            continue;
+        }
+        uObj[key.toUpperCase()] = value;
     }
 
     // sort array of keys alphabetically
