@@ -1,4 +1,5 @@
-var crypto = require('crypto');
+var hash = require('./hash');
+
 
 function nonEmpty40(value) {
     if (!value.trim()) {
@@ -132,6 +133,42 @@ exports.getPageData = function(link) {
     link.send(200, pageData);
 };
 
+exports.getFormData = function(link) {
+
+    var data = link.data;
+
+    if (!data) {
+        link.send(400, "Missing data.");
+        return;
+    }
+
+    getSettings(link.params.dsSettings, function(err, settings) {
+
+        if (err) {
+            link.send(500, "Error while accessing the settings");
+            return;
+        }
+
+        settings = settings || {};
+        settings.payments = settings.payment || {};
+
+        var pspid = settings.payments.pspid;
+        var passphrase = settings.payments.passphrase;
+
+        var formData = {
+            PSPID: pspid
+        };
+
+        var checkout = link.session.checkout || {};
+        // TODO add more data to the form data object
+
+        // sign the form data object
+        formData = hash.sign(formData, passphrase);
+
+        link.send(200, formData);
+    });
+};
+
 var PAGE_ORDER = ['address', 'review', 'payment', 'confirmation'];
 
 function validateFormNew (link, checkout, page) {
@@ -261,3 +298,33 @@ exports.placeOrder = function(link) {
         link.send(200, data);
     });
 };
+
+function getSettings (dataSourceName, callback) {
+
+    M.datasource.resolve(dataSourceName, function(err, ds) {
+
+        if (err) {
+            callback(err);
+            return;
+        }
+
+        M.database.open(ds, function(err, db) {
+
+            if (err) {
+                callback(err);
+                return;
+            }
+
+            db.collection(ds.collection, function(err, collection) {
+
+                if (err) {
+                    callback(err);
+                    return;
+                }
+
+                collection.findOne({}, callback);
+            });
+        });
+    });
+}
+
