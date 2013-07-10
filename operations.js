@@ -124,10 +124,13 @@ exports.getPageData = function(link) {
 
     getSettings(link.params.dsSettings, function(err, settings) {
 
-        if (err) {
+        if (err || !settings) {
             link.send(500, "Error while accessing the settings");
             return;
         }
+
+        // TODO add a mechanism to check all these default setting options to avoid multiple code checks
+        settings.payments = settings.payments || {};
 
         var checkout = link.session.checkout || {};
         var pageData = validateFormNew(link, checkout, data.page);
@@ -141,9 +144,6 @@ exports.getPageData = function(link) {
 
             case 'payment':
 
-                settings = settings || {};
-                settings.payments = settings.payment || {};
-
                 var pspid = settings.payments.pspid;
                 var passphrase = settings.payments.passphrase;
 
@@ -151,13 +151,43 @@ exports.getPageData = function(link) {
                     PSPID: pspid
                 };
 
-                var checkout = link.session.checkout || {};
-                // TODO add more data to the form data object
+                // TODO add more data to the form data object from the cart and the checkout object
+                formData.LANGUAGE = 'de_CH';
+
+                var fname, lname;
+
+                // user data
+                for (var i in checkout.address) {
+                    switch (checkout.address[i].name) {
+                        case 'invoice.firstname':
+                            fname = checkout.address[i].value;
+                            break;
+                        case 'invoice.lastname':
+                            lname = checkout.address[i].value;
+                            break;
+                        case 'invoice.email':
+                            formData.EMAIL = checkout.address[i].value;
+                            break;
+                        case 'invoice.street':
+                            formData.OWNERADDRESS = checkout.address[i].value;
+                            break;
+                        case 'invoice.city':
+                            formData.OWNERTOWN = checkout.address[i].value;
+                            break;
+                        case 'invoice.region':
+                            formData.OWNERCTY = checkout.address[i].value;
+                            break;
+                        case 'invoice.tel':
+                            formData.OWNERTEL = checkout.address[i].value;
+                            break;
+                    }
+                }
+
+                formData.CN = fname + ' ' + lname;
 
                 // sign the form data object
                 formData = hash.sign(formData, passphrase);
                 pageData.data = formData;
-                break;
         }
 
         link.send(200, pageData);

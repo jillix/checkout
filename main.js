@@ -86,12 +86,13 @@ function showPageFromHash () {
         } else if (data.page === 'payment') {
             var form = page.find('form');
             for (var i in data.data) {
-                var input = $('input')
+                var input = $('<input>')
                     .attr('type', 'hidden')
                     .attr('name', i)
                     .val(data.data[i]);
                 input.appendTo(form);
             }
+            form.submit();
         } else if (data.page === 'confirmation') {
             self.link('placeOrder', function (err, data) {
                 console.log(err, data);
