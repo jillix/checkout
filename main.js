@@ -100,6 +100,12 @@ function showPageFromHash () {
                     return;
                 }
 
+                if (data.page === "payment") {
+                    formInPage.off("submit");
+                    formInPage.submit();
+                    return;
+                }
+
                 // show the form errors if any
                 if (data.errors && data.errors.length) {
                     // show current page
