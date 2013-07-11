@@ -318,6 +318,12 @@ exports.savePageData = function(link) {
 
 exports.paymentResult = function (link) {
 
+    // TODO Is cart empty?
+    //      Is the #address form completed?
+    //      Is the "Accept terms" checkbox checked?
+    //
+    // If not, return link.send(400, "...");
+
     var query = link.query;
     if (!query.s) { return link.send(400, "Missing s key."); }
 
@@ -330,9 +336,10 @@ exports.paymentResult = function (link) {
 
         var redirectLink;
         var payments = settings.payments = settings.payments || {};
-        payments.urls = payments.url || {};
+        payments.urls = payments.urls || {};
 
-        if (!payments.shasign) { return link.send("Message to admin: SHASIGN is undefined."); }
+        if (!payments.passphrase) { return link.send(400, "Message to admin: passphrase is undefined."); }
+        if (!payments.pspid)      { return link.send(400, "Message to admin: pspid is undefined."); }
 
         var s = query.s;
         delete query.s;
@@ -342,14 +349,17 @@ exports.paymentResult = function (link) {
             // Accept
             /////////////////////////
             case "a":
-                var shasign = query.shasign;
-                if (!shasign) { return link.send(400, "Missing shasign."); }
+                var shasign = query.SHASIGN;
+                if (!shasign) { return link.send(400, "Missing SHASIGN."); }
 
-                delete query.shasign;
+                delete query.SHASIGN;
 
-                if (shasign !== hash.sign(link.query, settings.passphrase)) {
-                    redirectLink = payments.urls.declineurl;
-                    break;
+                console.log(link.query);
+                var signedHash = hash.sign(link.query, payments.passphrase);
+                console.log(signedHash);
+
+                if (!signedHash || shasign !== signedHash.SHASIGN) {
+                    return link.send(400, "Invalid SHASIGN. " + signedHash);
                 }
 
                 redirectLink = payments.urls.accepturl;
@@ -374,8 +384,7 @@ exports.paymentResult = function (link) {
                 break;
         }
 
-        // TODO Redirect!
-        link.res["Location"] = redirectLink;
+        link.res.headers["Location"] = redirectLink;
         link.send(302);
     });
 };
