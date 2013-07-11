@@ -188,7 +188,8 @@ exports.getPageData = function(link) {
 
                 // redirect urls
                 var urls = settings.payments.urls || {};
-                var operationLink = "http://" + link.req.headers.host + "/@/" + link.operation.module + "/paymentResult";
+                var protocol = (link.req.connection.encrypted ? "https://" : "http://");
+                var operationLink = protocol + link.req.headers.host + "/@/" + link.operation.module + "/paymentResult";
 
                 formData.ACCEPTURL      = operationLink + "?s=a";
                 formData.DECLINEURL     = operationLink + "?s=d";
@@ -317,9 +318,66 @@ exports.savePageData = function(link) {
 
 exports.paymentResult = function (link) {
 
-    // TODO
+    var query = link.query;
+    if (!query.s) { return link.send(400, "Missing s key."); }
 
-    link.send(200);
+    getSettings(link.params.dsSettings, function (err, settings) {
+
+        if (err) {
+            link.send(400, err);
+            return;
+        }
+
+        var redirectLink;
+        var payments = settings.payments = settings.payments || {};
+        payments.urls = payments.url || {};
+
+        if (!payments.shasign) { return link.send("Message to admin: SHASIGN is undefined."); }
+
+        var s = query.s;
+        delete query.s;
+
+        switch (s) {
+            /////////////////////////
+            // Accept
+            /////////////////////////
+            case "a":
+                var shasign = query.shasign;
+                if (!shasign) { return link.send(400, "Missing shasign."); }
+
+                delete query.shasign;
+
+                if (shasign !== hash.sign(link.query, settings.passphrase)) {
+                    redirectLink = payments.urls.declineurl;
+                    break;
+                }
+
+                redirectLink = payments.urls.accepturl;
+                break;
+            /////////////////////////
+            // Decline
+            /////////////////////////
+            case "d":
+                redirectLink = payments.urls.declineurl;
+                break;
+            /////////////////////////
+            // Cancel
+            /////////////////////////
+            case "c":
+                redirectLink = payments.urls.cancelurl;
+                break;
+            /////////////////////////
+            // Cancel
+            /////////////////////////
+            case "e":
+                redirectLink = payments.urls.exceptionurl;
+                break;
+        }
+
+        // TODO Redirect!
+        link.res["Location"] = redirectLink;
+        link.send(302);
+    });
 };
 
 exports.placeOrder = function(link) {
