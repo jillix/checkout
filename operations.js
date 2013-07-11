@@ -178,7 +178,7 @@ exports.getPageData = function(link) {
                             formData.OWNERCTY = checkout.address[i].value;
                             break;
                         case 'invoice.tel':
-                            formData.OWNERTEL = checkout.address[i].value;
+                            formData.OWNERTELNO = checkout.address[i].value;
                             break;
                     }
                 }
