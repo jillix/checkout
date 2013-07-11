@@ -150,7 +150,8 @@ exports.getPageData = function(link) {
                 var formData = {
                     PSPID: pspid,
                     ORDERID: 'dummy_' + new Date().getTime(),
-                    LANGUAGE: 'de_CH',
+                    // TODO Change again on de_CH
+                    LANGUAGE: 'en_US',
                     CURRENCY: 'CHF',
                     AMOUNT: checkout.total
                 };
@@ -184,6 +185,14 @@ exports.getPageData = function(link) {
                 }
 
                 formData.CN = fname + ' ' + lname;
+
+                // redirect urls
+                var urls = settings.payments.urls || {};
+
+                formData.ACCEPTURL = urls.accepturl;
+                formData.DECLINEURL = urls.declineurl;
+                formData.EXCEPTIONURL = urls.exceptionurl;
+                formData.CANCELURL = urls.cancelurl;
 
                 // sign the form data object
                 formData = hash.sign(formData, passphrase);
