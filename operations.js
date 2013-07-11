@@ -354,12 +354,10 @@ exports.paymentResult = function (link) {
 
                 delete query.SHASIGN;
 
-                console.log(link.query);
                 var signedHash = hash.sign(link.query, payments.passphrase);
-                console.log(signedHash);
 
                 if (!signedHash || shasign !== signedHash.SHASIGN) {
-                    return link.send(400, "Invalid SHASIGN. " + signedHash);
+                    return link.send(400, "Invalid SHASIGN.");
                 }
 
                 redirectLink = payments.urls.accepturl;
