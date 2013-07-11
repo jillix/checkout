@@ -1,4 +1,3 @@
-M.wrap('github/jillix/checkout/dev/main.js', function (require, module, exports) {
 var self;
 var form;
 var config;
@@ -110,7 +109,9 @@ function showPageFromHash () {
         formInPage.off('submit');
 
         // submit data
-        formInPage.on('submit', function () {
+        formInPage.on('submit', function (e) {
+
+            e.preventDefault();
 
             var data = {
                 page: hash,
@@ -128,6 +129,11 @@ function showPageFromHash () {
                 if (hash !== data.page) {
                     window.location.hash = data.page;
                     return;
+                }
+
+                if (formInPage.attr("action") {
+                    formInPage.off("submit");
+                    formInPage.submit();
                 }
 
                 // show the form errors if any
@@ -180,6 +186,3 @@ function showErrors (errors) {
 
     $(".notification").fadeIn();
 }
-
-
-return module; });
