@@ -188,11 +188,12 @@ exports.getPageData = function(link) {
 
                 // redirect urls
                 var urls = settings.payments.urls || {};
+                var operationLink = "http://" + link.req.headers.host + "/@/" + link.operation.module + "/paymentResult";
 
-                formData.ACCEPTURL = urls.accepturl;
-                formData.DECLINEURL = urls.declineurl;
-                formData.EXCEPTIONURL = urls.exceptionurl;
-                formData.CANCELURL = urls.cancelurl;
+                formData.ACCEPTURL      = operationLink + "?s=a";
+                formData.DECLINEURL     = operationLink + "?s=d";
+                formData.EXCEPTIONURL   = operationLink + "?s=e";
+                formData.CANCELURL      = operationLink + "?s=c";
 
                 // sign the form data object
                 formData = hash.sign(formData, passphrase);
@@ -312,6 +313,13 @@ exports.savePageData = function(link) {
 
         link.send(200, formData);
     });
+};
+
+exports.paymentResult = function (link) {
+
+    // TODO
+
+    link.send(200);
 };
 
 exports.placeOrder = function(link) {
