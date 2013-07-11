@@ -75,6 +75,60 @@ function showPageFromHash () {
             }
         }
 
+        // find form in the page
+        var formInPage = page.find('form');
+        formInPage.off('submit');
+
+        // handler for submit data
+        formInPage.on('submit', function (e) {
+
+            var data = {
+                page: hash,
+                form: formInPage.serializeArray()
+            };
+
+            // save and validate form data
+            self.link("savePageData", { data: data }, function (err, data) {
+
+                if (err) {
+                    alert(err);
+                    return;
+                }
+
+                if (hash !== data.page) {
+                    window.location.hash = data.page;
+                    return;
+                }
+
+                // show the form errors if any
+                if (data.errors && data.errors.length) {
+                    // show current page
+                    var page = $('.page.' + data.page, self.dom);
+                    $('.page', self.dom).hide();
+                    page.show();
+
+                    // fill in the form data
+                    for (var i in data.data) {
+                        var elem = $('[data-name="' + data.data[i].name + '"]', page);
+                        elem.val(data.data[i].value);
+                    }
+
+                    showErrors(data.errors);
+                } else {
+                    var nextHash = {
+                        address: 'review',
+                        review: 'payment',
+                        payment: 'confirmation'
+                    };
+
+                    // data was validated and no errors found
+                    window.location.hash = nextHash[data.page];
+                }
+            });
+
+            return false;
+        });
+
         // load cart review table in its container
         if (data.page === 'review') {
 
@@ -103,66 +157,6 @@ function showPageFromHash () {
         if (data.errors && data.errors.length) {
             showErrors(data.errors);
         }
-
-        // find form in the page
-        var formInPage = page.find('form');
-        formInPage.off('submit');
-
-        // submit data
-        formInPage.on('submit', function (e) {
-
-            e.preventDefault();
-
-            var data = {
-                page: hash,
-                form: formInPage.serializeArray()
-            };
-
-            // save and validate form data
-            self.link("savePageData", { data: data }, function (err, data) {
-
-                if (err) {
-                    alert(err);
-                    return;
-                }
-
-                if (hash !== data.page) {
-                    window.location.hash = data.page;
-                    return;
-                }
-
-                if (formInPage.attr("action") {
-                    formInPage.off("submit");
-                    formInPage.submit();
-                }
-
-                // show the form errors if any
-                if (data.errors && data.errors.length) {
-                    // show current page
-                    var page = $('.page.' + data.page, self.dom);
-                    $('.page', self.dom).hide();
-                    page.show();
-
-                    // fill in the form data
-                    for (var i in data.data) {
-                        var elem = $('[data-name="' + data.data[i].name + '"]', page);
-                        elem.val(data.data[i].value);
-                    }
-
-                    showErrors(data.errors);
-                } else {
-                    var nextHash = {
-                        address: 'review',
-                        review: 'payment',
-                        payment: 'confirmation'
-                    };
-                    // data was validated and no errors found
-                    window.location.hash = nextHash[data.page];
-                }
-            });
-
-            return false;
-        });
     });
 }
 
