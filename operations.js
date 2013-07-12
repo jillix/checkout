@@ -135,6 +135,21 @@ exports.getPageData = function(link) {
         var checkout = link.session.checkout || {};
         var pageData = validateFormNew(link, checkout, data.page);
 
+        var paid = false;
+
+        if (link.session && link.session.checkout && link.session.checkout.paid && link.session.checkout.paid.query) {
+            paid = true;
+        }
+
+        // verify payment
+        if (pageData.page === "payment" && paid) {
+            pageData.page = "confirmation";
+        }
+
+        if (pageData.page === "confirmation" && !paid) {
+            pageData.page = "payment";
+        }
+
         switch (pageData.page) {
 
             case 'review':
@@ -147,13 +162,15 @@ exports.getPageData = function(link) {
                 var pspid = settings.payments.pspid;
                 var passphrase = settings.payments.passphrase;
 
+                checkout.costs = checkout.costs || {};
+
                 var formData = {
                     PSPID: pspid,
                     ORDERID: 'dummy_' + new Date().getTime(),
                     // TODO Change again on de_CH
                     LANGUAGE: 'en_US',
                     CURRENCY: 'CHF',
-                    AMOUNT: checkout.total
+                    AMOUNT: checkout.costs.total
                 };
 
                 // user data
@@ -382,6 +399,28 @@ exports.paymentResult = function (link) {
                 break;
         }
 
+        if (s === "a") {
+
+            var paid = {
+                query: link.query
+            };
+
+            var checkout = link.session.checkout || {};
+            checkout.paid = paid;
+
+            link.session.set({ checkout: checkout }, function (err) {
+
+                if (err) {
+                    link.send(400, err);
+                    return;
+                }
+
+                link.res.headers["Location"] = redirectLink;
+                link.send(302);
+            });
+            return;
+        }
+
         link.res.headers["Location"] = redirectLink;
         link.send(302);
     });
@@ -395,18 +434,95 @@ exports.placeOrder = function(link) {
         return;
     }
 
-    var Order = require(M.app.getPath() + '/' + link.params.orderFile);
-    Order.start(link.session, link.params, function (err, data) {
+    if (!link.session.checkout) {
+        link.send(400, "The checkout object is missing.");
+        return;
+    }
+
+    if (!link.session.checkout.costs) {
+        link.send(400, "The checkout.costs object is missing.");
+        return;
+    }
+
+    var checkout = link.session.checkout;
+
+    if (!checkout.address || !checkout.address.length) {
+        link.send(400, "The address array is missing.");
+        return;
+    }
+
+    if (!checkout.address || !checkout.payment.length) {
+        link.send(400, "The payment array is missing.");
+        return;
+    }
+
+    if (!checkout.paid && !checkout.paid.query) {
+        link.send(400, "Oh, you have to accept paying, first!");
+        return;
+    }
+
+    // insert the the cart info, totals and user information in orders collection
+    getCart(link.params.dsCarts, link.session._sid, function (err, cart) {
+
         if (err) {
             link.send(400, err);
             return;
         }
 
-        link.send(200, data);
+        getCollection(link.params.dsOrders, function (err, ordersCollection) {
+
+            if (err) {
+                link.send(400, err);
+                return;
+            }
+
+            var costs = link.session.checkout.costs;
+
+            var userInfo = {
+                invoice: {},
+                delivery: {}
+            };
+
+            // build the user info object
+            for (var i in checkout.address) {
+                var current = checkout.address[i];
+                var info = current.name.split(".");
+
+                userInfo[info[0]][info[1]] = current.value;
+            }
+
+            var newDocument = {
+                cart: cart,
+                totals: costs,
+                userInfo: userInfo
+            };
+
+            ordersCollection.insert(newDocument, function (err, doc) {
+
+                if (err) {
+                    link.send(400, err);
+                    return;
+                }
+
+                var Order = require(M.app.getPath() + '/' + link.params.orderFile);
+                Order.start(link.session, link.params, function (err, data) {
+
+                    if (err) {
+                        link.send(400, err);
+                        return;
+                    }
+
+                    link.session.end(true, function() {
+                        link.send(200, data);
+                    });
+                });
+            });
+        });
     });
+
 };
 
-function getSettings (dataSourceName, callback) {
+function getCollection (dataSourceName, callback) {
 
     M.datasource.resolve(dataSourceName, function(err, ds) {
 
@@ -422,16 +538,41 @@ function getSettings (dataSourceName, callback) {
                 return;
             }
 
-            db.collection(ds.collection, function(err, collection) {
-
-                if (err) {
-                    callback(err);
-                    return;
-                }
-
-                collection.findOne({}, callback);
-            });
+            db.collection(ds.collection, callback);
         });
     });
 }
 
+function getSettings(dataSourceName, callback) {
+    getCollection(dataSourceName, function (err, collection) {
+        if (err) { return callback(err); }
+
+        collection.findOne({}, callback);
+    });
+}
+
+/*
+ *  Get the cart
+ *
+ *  Returns in the callback:
+ *   - error: first parameter or
+ *   - the document that contains the items from the cart
+ *
+ * */
+function getCart (dsCart, sid, callback) {
+
+    getCollection(dsCart, function (err, collection ) {
+
+        if (err) {
+            callback(err);
+            return;
+        }
+
+        collection.findOne({ _id: sid }, function(err, cart) {
+
+            if (err) { return callback(err); }
+            if (!cart) { return callback("Cart is empty."); }
+            if (cart) { return callback(null, cart); }
+        });
+    });
+}
