@@ -28,7 +28,10 @@ exports.sign = function (obj, pass) {
     // create the text
     var text = "";
     for (var i in keys) {
-        text += keys[i] + "=" + uObj[keys[i]] + pass;
+        var value = uObj[keys[i]];
+        if (value) {
+            text += keys[i] + "=" + value + pass;
+        }
     }
 
     // create the hash to upper case
