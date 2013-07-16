@@ -185,70 +185,86 @@ exports.getPageData = function(link) {
 
                     checkout.costs = checkout.costs || {};
 
-                    var formData = {
-                        PSPID: pspid,
-                        ORDERID: 'dummy_' + new Date().getTime(),
-                        // TODO Change again on de_CH
-                        LANGUAGE: 'en_US',
-                        CURRENCY: 'CHF',
-                        AMOUNT: checkout.costs.total
-                    };
+                    var orderid = new Date().getTime();
 
-                    // user data
-                    var fname, lname;
-                    for (var i in checkout.address) {
-                        switch (checkout.address[i].name) {
-                            case 'invoice.firstname':
-                                fname = checkout.address[i].value;
-                                break;
-                            case 'invoice.lastname':
-                                lname = checkout.address[i].value;
-                                break;
-                            case 'invoice.email':
-                                formData.EMAIL = checkout.address[i].value;
-                                break;
-                            case 'invoice.street':
-                                formData.OWNERADDRESS = checkout.address[i].value;
-                                break;
-                            case 'invoice.city':
-                                formData.OWNERTOWN = checkout.address[i].value;
-                                break;
-                            case 'invoice.region':
-                                formData.OWNERCTY = checkout.address[i].value;
-                                break;
-                            case 'invoice.tel':
-                                formData.OWNERTELNO = checkout.address[i].value;
-                                break;
+                    var payments = link.session.payments || {};
+                    payments.orderid = orderid;
+
+                    link.session.set({ payments: payments }, function (err) {
+
+                        if (err) {
+                            link.send(400, err);
+                            return;
                         }
-                    }
 
-                    formData.CN = fname + ' ' + lname;
+                        var formData = {
+                            PSPID: pspid,
+                            ORDERID: link.session.payments.orderid,
+                            LANGUAGE: 'de_CH',
+                            CURRENCY: 'CHF',
+                            AMOUNT: checkout.costs.total
+                        };
 
-                    // redirect urls
-                    var urls = settings.payments.urls || {};
-                    var protocol = (link.req.connection.encrypted ? "https://" : "http://");
-                    var operationLink = protocol + link.req.headers.host + "/@/" + link.operation.module + "/paymentResult";
+                        // user data
+                        var fname, lname;
+                        for (var i in checkout.address) {
+                            switch (checkout.address[i].name) {
+                                case 'invoice.firstname':
+                                    fname = checkout.address[i].value;
+                                    break;
+                                case 'invoice.lastname':
+                                    lname = checkout.address[i].value;
+                                    break;
+                                case 'invoice.email':
+                                    formData.EMAIL = checkout.address[i].value;
+                                    break;
+                                case 'invoice.street':
+                                    formData.OWNERADDRESS = checkout.address[i].value;
+                                    break;
+                                case 'invoice.city':
+                                    formData.OWNERTOWN = checkout.address[i].value;
+                                    break;
+                                case 'invoice.region':
+                                    formData.OWNERCTY = checkout.address[i].value;
+                                    break;
+                                case 'invoice.tel':
+                                    formData.OWNERTELNO = checkout.address[i].value;
+                                    break;
+                            }
+                        }
 
-                    formData.ACCEPTURL      = operationLink + "?s=a";
-                    formData.DECLINEURL     = operationLink + "?s=d";
-                    formData.EXCEPTIONURL   = operationLink + "?s=e";
-                    formData.CANCELURL      = operationLink + "?s=c";
+                        formData.CN = fname + ' ' + lname;
 
-                    formData.CATALOGURL     = urls.shop;
-                    formData.HOMEURL        = urls.home;
+                        // redirect urls
+                        var urls = settings.payments.urls || {};
+                        var protocol = (link.req.connection.encrypted ? "https://" : "http://");
+                        var operationLink = protocol + link.req.headers.host + "/@/" + link.operation.module + "/paymentResult";
 
-                    // look and feel
-                    var lookAndFeel = settings.payments.lookAndFeel;
-                    for (var prop in lookAndFeel) {
-                        formData[prop.toUpperCase()] = lookAndFeel[prop];
-                    }
+                        formData.ACCEPTURL      = operationLink + "?s=a";
+                        formData.DECLINEURL     = operationLink + "?s=d";
+                        formData.EXCEPTIONURL   = operationLink + "?s=e";
+                        formData.CANCELURL      = operationLink + "?s=c";
 
-                    // sign the form data object
-                    formData = hash.sign(formData, passphrase);
-                    pageData.data = formData;
+                        formData.CATALOGURL     = urls.shop;
+                        formData.HOMEURL        = urls.home;
+
+                        // look and feel
+                        var lookAndFeel = settings.payments.lookAndFeel;
+                        for (var prop in lookAndFeel) {
+                            formData[prop.toUpperCase()] = lookAndFeel[prop];
+                        }
+
+                        // sign the form data object
+                        formData = hash.sign(formData, passphrase);
+                        pageData.data = formData;
+
+                        link.send(200, pageData);
+                    });
             }
 
-            link.send(200, pageData);
+            if (pageData.page !== "payment") {
+                link.send(200, pageData);
+            }
         });
     });
 };
@@ -539,6 +555,7 @@ exports.placeOrder = function(link) {
             }
 
             var newDocument = {
+                _id: link.session.payments.orderid,
                 cart: cart,
                 totals: costs,
                 userInfo: userInfo
