@@ -541,7 +541,15 @@ exports.placeOrder = function(link) {
                     return;
                 }
 
-                var Order = require(M.app.getPath() + '/' + link.params.orderFile);
+                var Order;
+
+                try {
+                    Order = require(M.app.getPath() + '/' + link.params.orderFile);
+                } catch (e) {
+                    link.send(400, e.message);
+                    return;
+                }
+
                 Order.start(link.session, link.params, function (err, data) {
 
                     if (err) {
