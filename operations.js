@@ -134,6 +134,7 @@ exports.getPageData = function(link) {
 
         var checkout = link.session.checkout || {};
         var pageData = validateFormNew(link, checkout, data.page);
+        var urls = settings.payments.urls || {};
 
         getCart(link.params.dsCarts, link.session._sid, function (err, cart) {
 
@@ -144,7 +145,7 @@ exports.getPageData = function(link) {
 
             // cart is empty, redirect to shop page
             if (!cart || JSON.stringify(cart.items) === "{}") {
-                var shopUrl = (settings.payments.urls || {}).shop || "/";
+                var shopUrl = urls.shop || "/";
                 link.res.headers["Location"] = shopUrl;
 
                 var res = {
@@ -232,6 +233,15 @@ exports.getPageData = function(link) {
                     formData.DECLINEURL     = operationLink + "?s=d";
                     formData.EXCEPTIONURL   = operationLink + "?s=e";
                     formData.CANCELURL      = operationLink + "?s=c";
+
+                    formData.CATALOGURL     = urls.shop;
+                    formData.HOMEURL        = urls.home;
+
+                    // look and feel
+                    var lookAndFeel = settings.payments.lookAndFeel;
+                    for (var prop in lookAndFeel) {
+                        formData[prop.toUpperCase()] = lookAndFeel[prop];
+                    }
 
                     // sign the form data object
                     formData = hash.sign(formData, passphrase);
