@@ -143,7 +143,7 @@ exports.getPageData = function(link) {
             }
 
             // cart is empty, redirect to shop page
-            if (JSON.stringify(cart.items) === "{}") {
+            if (!cart || JSON.stringify(cart.items) === "{}") {
                 var shopUrl = (settings.payments.urls || {}).shop || "/";
                 link.res.headers["Location"] = shopUrl;
 
@@ -380,7 +380,7 @@ exports.paymentResult = function (link) {
             }
 
             // cart is empty, redirect
-            if (JSON.stringify(cart.items) === "{}") {
+            if (!cart || JSON.stringify(cart.items) === "{}") {
                 var shopUrl = (settings.payments.urls || {}).shop || "/";
                 link.res.headers["Location"] = shopUrl;
                 link.send(302);
