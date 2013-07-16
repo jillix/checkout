@@ -135,90 +135,111 @@ exports.getPageData = function(link) {
         var checkout = link.session.checkout || {};
         var pageData = validateFormNew(link, checkout, data.page);
 
-        var paid = false;
+        getCart(link.params.dsCarts, link.session._sid, function (err, cart) {
 
-        if (link.session && link.session.checkout && link.session.checkout.paid && link.session.checkout.paid.query) {
-            paid = true;
-        }
+            if (err) {
+                link.send(400, err);
+                return;
+            }
 
-        // verify payment
-        if (pageData.page === "payment" && paid) {
-            pageData.page = "confirmation";
-        }
+            // cart is empty, redirect to shop page
+            if (JSON.stringify(cart.items) === "{}") {
+                var shopUrl = (settings.payments.urls || {}).shop || "/";
+                link.res.headers["Location"] = shopUrl;
 
-        if (pageData.page === "confirmation" && !paid) {
-            pageData.page = "payment";
-        }
-
-        switch (pageData.page) {
-
-            case 'review':
-                pageData.data = pageData.data || [];
-                pageData.data = pageData.data.concat(checkout.address);
-                break;
-
-            case 'payment':
-
-                var pspid = settings.payments.pspid;
-                var passphrase = settings.payments.passphrase;
-
-                checkout.costs = checkout.costs || {};
-
-                var formData = {
-                    PSPID: pspid,
-                    ORDERID: 'dummy_' + new Date().getTime(),
-                    // TODO Change again on de_CH
-                    LANGUAGE: 'en_US',
-                    CURRENCY: 'CHF',
-                    AMOUNT: checkout.costs.total
+                var res = {
+                    "redirect": shopUrl
                 };
 
-                // user data
-                var fname, lname;
-                for (var i in checkout.address) {
-                    switch (checkout.address[i].name) {
-                        case 'invoice.firstname':
-                            fname = checkout.address[i].value;
-                            break;
-                        case 'invoice.lastname':
-                            lname = checkout.address[i].value;
-                            break;
-                        case 'invoice.email':
-                            formData.EMAIL = checkout.address[i].value;
-                            break;
-                        case 'invoice.street':
-                            formData.OWNERADDRESS = checkout.address[i].value;
-                            break;
-                        case 'invoice.city':
-                            formData.OWNERTOWN = checkout.address[i].value;
-                            break;
-                        case 'invoice.region':
-                            formData.OWNERCTY = checkout.address[i].value;
-                            break;
-                        case 'invoice.tel':
-                            formData.OWNERTELNO = checkout.address[i].value;
-                            break;
+                link.send(200, res);
+                return;
+            }
+
+            var paid = false;
+
+            if (link.session && link.session.checkout && link.session.checkout.paid && link.session.checkout.paid.query) {
+                paid = true;
+            }
+
+            // verify payment
+            if (pageData.page === "payment" && paid) {
+                pageData.page = "confirmation";
+            }
+
+            if (pageData.page === "confirmation" && !paid) {
+                pageData.page = "payment";
+            }
+
+            switch (pageData.page) {
+
+                case 'review':
+                    pageData.data = pageData.data || [];
+                    pageData.data = pageData.data.concat(checkout.address);
+                    break;
+
+                case 'payment':
+
+                    var pspid = settings.payments.pspid;
+                    var passphrase = settings.payments.passphrase;
+
+                    checkout.costs = checkout.costs || {};
+
+                    var formData = {
+                        PSPID: pspid,
+                        ORDERID: 'dummy_' + new Date().getTime(),
+                        // TODO Change again on de_CH
+                        LANGUAGE: 'en_US',
+                        CURRENCY: 'CHF',
+                        AMOUNT: checkout.costs.total
+                    };
+
+                    // user data
+                    var fname, lname;
+                    for (var i in checkout.address) {
+                        switch (checkout.address[i].name) {
+                            case 'invoice.firstname':
+                                fname = checkout.address[i].value;
+                                break;
+                            case 'invoice.lastname':
+                                lname = checkout.address[i].value;
+                                break;
+                            case 'invoice.email':
+                                formData.EMAIL = checkout.address[i].value;
+                                break;
+                            case 'invoice.street':
+                                formData.OWNERADDRESS = checkout.address[i].value;
+                                break;
+                            case 'invoice.city':
+                                formData.OWNERTOWN = checkout.address[i].value;
+                                break;
+                            case 'invoice.region':
+                                formData.OWNERCTY = checkout.address[i].value;
+                                break;
+                            case 'invoice.tel':
+                                formData.OWNERTELNO = checkout.address[i].value;
+                                break;
+                        }
                     }
-                }
 
-                formData.CN = fname + ' ' + lname;
+                    formData.CN = fname + ' ' + lname;
 
-                // redirect urls
-                var urls = settings.payments.urls || {};
-                var protocol = (link.req.connection.encrypted ? "https://" : "http://");
-                var operationLink = protocol + link.req.headers.host + "/@/" + link.operation.module + "/paymentResult";
+                    // redirect urls
+                    var urls = settings.payments.urls || {};
+                    var protocol = (link.req.connection.encrypted ? "https://" : "http://");
+                    var operationLink = protocol + link.req.headers.host + "/@/" + link.operation.module + "/paymentResult";
 
-                formData.ACCEPTURL      = operationLink + "?s=a";
-                formData.DECLINEURL     = operationLink + "?s=d";
-                formData.EXCEPTIONURL   = operationLink + "?s=e";
-                formData.CANCELURL      = operationLink + "?s=c";
+                    formData.ACCEPTURL      = operationLink + "?s=a";
+                    formData.DECLINEURL     = operationLink + "?s=d";
+                    formData.EXCEPTIONURL   = operationLink + "?s=e";
+                    formData.CANCELURL      = operationLink + "?s=c";
 
-                // sign the form data object
-                formData = hash.sign(formData, passphrase);
-                pageData.data = formData;
-        }
+                    // sign the form data object
+                    formData = hash.sign(formData, passphrase);
+                    pageData.data = formData;
+            }
 
-        link.send(200, pageData);
+            link.send(200, pageData);
+        });
     });
 };
 
@@ -285,7 +306,6 @@ exports.savePageData = function(link) {
 
     var errors = validatePage(data.page, data.form, hasAlt);
 
-
     // we found an error
     if (errors && errors.length) {
         link.send(200, { data: data.form, errors: errors, page: data.page });
@@ -335,11 +355,12 @@ exports.savePageData = function(link) {
 
 exports.paymentResult = function (link) {
 
-    // TODO Is cart empty?
-    //      Is the #address form completed?
-    //      Is the "Accept terms" checkbox checked?
-    //
-    // If not, return link.send(400, "...");
+    var session = link.session || {};
+    var checkout = session.checkout || {};
+
+    if (!checkout.address) { return link.send(400, "Address array is required."); }
+    if (!checkout.review) { return link.send(400, "Accept terms and conditions."); }
+    if (!checkout.payment) { return link.send(400, "You have to pay, first."); }
 
     var query = link.query;
     if (!query.s) { return link.send(400, "Missing s key."); }
@@ -351,78 +372,94 @@ exports.paymentResult = function (link) {
             return;
         }
 
-        var redirectLink;
-        var payments = settings.payments = settings.payments || {};
-        payments.urls = payments.urls || {};
+        getCart(link.params.dsCarts, link.session._sid, function (err, cart) {
 
-        if (!payments.passphrase) { return link.send(400, "Message to admin: passphrase is undefined."); }
-        if (!payments.pspid)      { return link.send(400, "Message to admin: pspid is undefined."); }
+            if (err) {
+                link.send(400, err);
+                return;
+            }
 
-        var s = query.s;
-        delete query.s;
-
-        switch (s) {
-            /////////////////////////
-            // Accept
-            /////////////////////////
-            case "a":
-                var shasign = query.SHASIGN;
-                if (!shasign) { return link.send(400, "Missing SHASIGN."); }
-
-                delete query.SHASIGN;
-
-                var signedHash = hash.sign(link.query, payments.passphrase);
-
-                if (!signedHash || shasign !== signedHash.SHASIGN) {
-                    return link.send(400, "Invalid SHASIGN.");
-                }
-
-                redirectLink = payments.urls.accepturl;
-                break;
-            /////////////////////////
-            // Decline
-            /////////////////////////
-            case "d":
-                redirectLink = payments.urls.declineurl;
-                break;
-            /////////////////////////
-            // Cancel
-            /////////////////////////
-            case "c":
-                redirectLink = payments.urls.cancelurl;
-                break;
-            /////////////////////////
-            // Cancel
-            /////////////////////////
-            case "e":
-                redirectLink = payments.urls.exceptionurl;
-                break;
-        }
-
-        if (s === "a") {
-
-            var paid = {
-                query: link.query
-            };
-
-            var checkout = link.session.checkout || {};
-            checkout.paid = paid;
-
-            link.session.set({ checkout: checkout }, function (err) {
-
-                if (err) {
-                    link.send(400, err);
-                    return;
-                }
-
-                link.res.headers["Location"] = redirectLink;
+            // cart is empty, redirect
+            if (JSON.stringify(cart.items) === "{}") {
+                var shopUrl = (settings.payments.urls || {}).shop || "/";
+                link.res.headers["Location"] = shopUrl;
                 link.send(302);
-            });
-            return;
-        }
+                return;
+            }
 
-        link.res.headers["Location"] = redirectLink;
-        link.send(302);
+            var redirectLink;
+            var payments = settings.payments = settings.payments || {};
+            payments.urls = payments.urls || {};
+
+            if (!payments.passphrase) { return link.send(400, "Message to admin: passphrase is undefined."); }
+            if (!payments.pspid)      { return link.send(400, "Message to admin: pspid is undefined."); }
+
+            var s = query.s;
+            delete query.s;
+
+            switch (s) {
+                /////////////////////////
+                // Accept
+                /////////////////////////
+                case "a":
+                    var shasign = query.SHASIGN;
+                    if (!shasign) { return link.send(400, "Missing SHASIGN."); }
+
+                    delete query.SHASIGN;
+
+                    var signedHash = hash.sign(link.query, payments.passphrase);
+
+                    if (!signedHash || shasign !== signedHash.SHASIGN) {
+                        return link.send(400, "Invalid SHASIGN.");
+                    }
+
+                    redirectLink = payments.urls.accepturl;
+                    break;
+                /////////////////////////
+                // Decline
+                /////////////////////////
+                case "d":
+                    redirectLink = payments.urls.declineurl;
+                    break;
+                /////////////////////////
+                // Cancel
+                /////////////////////////
+                case "c":
+                    redirectLink = payments.urls.cancelurl;
+                    break;
+                /////////////////////////
+                // Cancel
+                /////////////////////////
+                case "e":
+                    redirectLink = payments.urls.exceptionurl;
+                    break;
+            }
+
+            if (s === "a") {
+
+                var paid = {
+                    query: link.query
+                };
+
+                var checkout = link.session.checkout || {};
+                checkout.paid = paid;
+
+                link.session.set({ checkout: checkout }, function (err) {
+
+                    if (err) {
+                        link.send(400, err);
+                        return;
+                    }
+
+                    link.res.headers["Location"] = redirectLink;
+                    link.send(302);
+                });
+                return;
+            }
+
+            link.res.headers["Location"] = redirectLink;
+            link.send(302);
+        });
     });
 };
 
@@ -571,8 +608,7 @@ function getCart (dsCart, sid, callback) {
         collection.findOne({ _id: sid }, function(err, cart) {
 
             if (err) { return callback(err); }
-            if (!cart) { return callback("Cart is empty."); }
-            if (cart) { return callback(null, cart); }
+            callback(null, cart);
         });
     });
 }

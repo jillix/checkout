@@ -45,6 +45,11 @@ function showPageFromHash () {
             return;
         }
 
+        if (data.redirect) {
+            window.location = data.redirect;
+            return;
+        }
+
         if (hash !== data.page) {
             window.location.hash = data.page;
             return;
