@@ -185,81 +185,68 @@ exports.getPageData = function(link) {
 
                     checkout.costs = checkout.costs || {};
 
-                    var orderid = new Date().getTime();
+                    var formData = {
+                        PSPID: pspid,
+                        ORDERID: link.session.payments.orderid,
+                        LANGUAGE: 'de_CH',
+                        CURRENCY: 'CHF',
+                        AMOUNT: checkout.costs.total
+                    };
 
-                    var payments = link.session.payments || {};
-                    payments.orderid = orderid;
-
-                    link.session.set({ payments: payments }, function (err) {
-
-                        if (err) {
-                            link.send(400, err);
-                            return;
+                    // user data
+                    var fname, lname;
+                    for (var i in checkout.address) {
+                        switch (checkout.address[i].name) {
+                            case 'invoice.firstname':
+                                fname = checkout.address[i].value;
+                                break;
+                            case 'invoice.lastname':
+                                lname = checkout.address[i].value;
+                                break;
+                            case 'invoice.email':
+                                formData.EMAIL = checkout.address[i].value;
+                                break;
+                            case 'invoice.street':
+                                formData.OWNERADDRESS = checkout.address[i].value;
+                                break;
+                            case 'invoice.city':
+                                formData.OWNERTOWN = checkout.address[i].value;
+                                break;
+                            case 'invoice.region':
+                                formData.OWNERCTY = checkout.address[i].value;
+                                break;
+                            case 'invoice.tel':
+                                formData.OWNERTELNO = checkout.address[i].value;
+                                break;
                         }
+                    }
 
-                        var formData = {
-                            PSPID: pspid,
-                            ORDERID: link.session.payments.orderid,
-                            LANGUAGE: 'de_CH',
-                            CURRENCY: 'CHF',
-                            AMOUNT: checkout.costs.total
-                        };
+                    formData.CN = fname + ' ' + lname;
 
-                        // user data
-                        var fname, lname;
-                        for (var i in checkout.address) {
-                            switch (checkout.address[i].name) {
-                                case 'invoice.firstname':
-                                    fname = checkout.address[i].value;
-                                    break;
-                                case 'invoice.lastname':
-                                    lname = checkout.address[i].value;
-                                    break;
-                                case 'invoice.email':
-                                    formData.EMAIL = checkout.address[i].value;
-                                    break;
-                                case 'invoice.street':
-                                    formData.OWNERADDRESS = checkout.address[i].value;
-                                    break;
-                                case 'invoice.city':
-                                    formData.OWNERTOWN = checkout.address[i].value;
-                                    break;
-                                case 'invoice.region':
-                                    formData.OWNERCTY = checkout.address[i].value;
-                                    break;
-                                case 'invoice.tel':
-                                    formData.OWNERTELNO = checkout.address[i].value;
-                                    break;
-                            }
-                        }
+                    // redirect urls
+                    var urls = settings.payments.urls || {};
+                    var protocol = (link.req.connection.encrypted ? "https://" : "http://");
+                    var operationLink = protocol + link.req.headers.host + "/@/" + link.operation.module + "/paymentResult";
 
-                        formData.CN = fname + ' ' + lname;
+                    formData.ACCEPTURL      = operationLink + "?s=a";
+                    formData.DECLINEURL     = operationLink + "?s=d";
+                    formData.EXCEPTIONURL   = operationLink + "?s=e";
+                    formData.CANCELURL      = operationLink + "?s=c";
 
-                        // redirect urls
-                        var urls = settings.payments.urls || {};
-                        var protocol = (link.req.connection.encrypted ? "https://" : "http://");
-                        var operationLink = protocol + link.req.headers.host + "/@/" + link.operation.module + "/paymentResult";
+                    formData.CATALOGURL     = urls.shop;
+                    formData.HOMEURL        = urls.home;
 
-                        formData.ACCEPTURL      = operationLink + "?s=a";
-                        formData.DECLINEURL     = operationLink + "?s=d";
-                        formData.EXCEPTIONURL   = operationLink + "?s=e";
-                        formData.CANCELURL      = operationLink + "?s=c";
+                    // look and feel
+                    var lookAndFeel = settings.payments.lookAndFeel;
+                    for (var prop in lookAndFeel) {
+                        formData[prop.toUpperCase()] = lookAndFeel[prop];
+                    }
 
-                        formData.CATALOGURL     = urls.shop;
-                        formData.HOMEURL        = urls.home;
+                    // sign the form data object
+                    formData = hash.sign(formData, passphrase);
+                    pageData.data = formData;
 
-                        // look and feel
-                        var lookAndFeel = settings.payments.lookAndFeel;
-                        for (var prop in lookAndFeel) {
-                            formData[prop.toUpperCase()] = lookAndFeel[prop];
-                        }
-
-                        // sign the form data object
-                        formData = hash.sign(formData, passphrase);
-                        pageData.data = formData;
-
-                        link.send(200, pageData);
-                    });
+                    link.send(200, pageData);
             }
 
             if (pageData.page !== "payment") {
@@ -361,6 +348,14 @@ exports.savePageData = function(link) {
     var checkout = link.session.checkout || {};
     checkout[data.page] = data.form;
 
+    if (data.page === "address") {
+        checkout["confirmation"] = data.form;
+    }
+
+    if (data.page === "payment") {
+        checkout.paying = true;
+    }
+
     link.session.set({ checkout: checkout }, function (err) {
 
         if (err) {
@@ -461,6 +456,7 @@ exports.paymentResult = function (link) {
                     break;
             }
 
+
             if (s === "a") {
 
                 var paid = {
@@ -469,6 +465,7 @@ exports.paymentResult = function (link) {
 
                 var checkout = link.session.checkout || {};
                 checkout.paid = paid;
+                checkout.paying = false;
 
                 link.session.set({ checkout: checkout }, function (err) {
 
@@ -483,8 +480,20 @@ exports.paymentResult = function (link) {
                 return;
             }
 
-            link.res.headers["Location"] = redirectLink;
-            link.send(302);
+            var checkout = link.session.checkout || {};
+            checkout.paying = false;
+
+            link.session.set({ checkout: checkout }, function (err) {
+
+                var payments = link.session.payments || {};
+                payments.trials = payments.trials || 1;
+                payments.orderid = cart._id + "_" + (++payments.trials);
+
+                link.session.set({ payments: payments }, function (err) {
+                    link.res.headers["Location"] = redirectLink;
+                    link.send(302);
+                });
+            });
         });
     });
 };
@@ -555,7 +564,7 @@ exports.placeOrder = function(link) {
             }
 
             var newDocument = {
-                _id: link.session.payments.orderid,
+                id: link.session.payments.orderid,
                 cart: cart,
                 totals: costs,
                 userInfo: userInfo
