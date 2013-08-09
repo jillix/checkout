@@ -58,7 +58,7 @@ function validateAddress(dataArray, hasAlt) {
         if (typeof validator === 'function') {
             var error = validator(dataArray[i].value);
             if (error) {
-                errors.push({ name: dataArray[i].name, err: error });
+                errors.push({ name: dataArray[i].name, message: error });
             }
         }
     }
@@ -85,7 +85,7 @@ function validateReview(dataArray) {
         if (typeof validator === 'function') {
             var error = validator(dataArray[i].value);
             if (error) {
-                errors.push({ name: dataArray[i].name, err: error });
+                errors.push({ name: dataArray[i].name, message: error });
             }
         }
     }

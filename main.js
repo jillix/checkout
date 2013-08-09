@@ -177,17 +177,28 @@ function showErrors (errors) {
     $(".notification").remove();
 
     for (var i in errors) {
-        var notification = Notification.new(errors[i].err, "error", ["notification"]);
-        var input;
-
-        input = $("[name='" + errors[i].name + "']", self.dom);
-
-        if (input.attr("type") === "checkbox") {
-            input = input.parent();
+        if (config.i18n) {
+            self.emit("message", errors[i], function (err, message) {
+                if (err) { return console.log(err); }
+                showError(message);
+            });
+        } else {
+            showError(errors[i]);
         }
-
-        input.after(notification);
     }
 
     $(".notification").fadeIn();
+}
+
+function showError(err) {
+    var notification = Notification.new(err.message, "error", ["notification"]);
+    var input;
+
+    input = $("[name='" + err.name + "']", self.dom);
+
+    if (input.attr("type") === "checkbox") {
+        input = input.parent();
+    }
+
+    input.after(notification);
 }
