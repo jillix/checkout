@@ -582,16 +582,15 @@ exports.placeOrder = function(link) {
                 try {
                     Order = require(M.app.getPath() + '/' + link.params.orderFile);
                 } catch (e) {
-                    link.send(400, e.message);
+                    link.session.end(true, function() {
+                        link.send(400, e.message);
+                    });
                     return;
                 }
 
                 Order.start(link.session, link.params, function (err, data) {
 
-                    if (err) {
-                        link.send(400, err);
-                        return;
-                    }
+                    if (err) { console.log(err); }
 
                     link.session.end(true, function() {
                         link.send(200, data);
