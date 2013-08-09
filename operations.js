@@ -224,7 +224,6 @@ exports.getPageData = function(link) {
                     formData.CN = fname + ' ' + lname;
 
                     // redirect urls
-                    var urls = settings.payments.urls || {};
                     var protocol = (link.req.connection.encrypted ? "https://" : "http://");
                     var operationLink = protocol + link.req.headers.host + "/@/" + link.operation.module + "/paymentResult";
 
