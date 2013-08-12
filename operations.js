@@ -144,7 +144,7 @@ exports.getPageData = function(link) {
             }
 
             // cart is empty, redirect to shop page
-            if (!cart || JSON.stringify(cart.items) === "{}") {
+            if (!cart || !cart.items || JSON.stringify(cart.items) === "{}") {
                 var shopUrl = urls.shop || "/";
                 link.res.headers["Location"] = shopUrl;
 
@@ -169,6 +169,20 @@ exports.getPageData = function(link) {
 
             if (pageData.page === "confirmation" && !paid) {
                 pageData.page = "payment";
+            }
+
+            // validate limits
+            settings.limits = settings.limits || {};
+            settings.limits = {
+                min: settings.limits.min || 0,
+                max: settings.limits.max || 0
+            }
+
+            var limits = settings.limits;
+            var subtotal = checkout.costs.subtotal;
+
+            if (subtotal < limits.min || subtotal > limits.max) {
+                pageData.page = "cart"
             }
 
             switch (pageData.page) {
@@ -589,7 +603,7 @@ exports.placeOrder = function(link) {
 
                 Order.start(link.session, link.params, function (err, data) {
 
-                    if (err) { console.log(err); }
+                    if (err) { console.error(err); }
 
                     link.session.end(true, function() {
                         link.send(200, data);
