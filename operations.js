@@ -16,7 +16,12 @@ var ADDRESS_FIELD_VALIDATORS = {
     lastname: nonEmpty40,
     street: nonEmpty40,
     city: nonEmpty40,
-    tel: nonEmpty40,
+    tel: function (value) {
+        var phone = parseInt(value);
+        if (isNaN(phone)) {
+            return "This is not a valid phone number.";
+        }
+    },
     zip: function(value) {
         var zip = parseInt(value);
         if (isNaN(zip) || zip > 9999 || zip < 1000 || value.length != 4) {
