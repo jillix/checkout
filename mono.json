@@ -4,6 +4,7 @@
     "name": "checkout",
     "dependencies": [
         "/main.js",
+        "/notification.js",
         "http://ajax.googleapis.com/ajax/libs/jquery/1/jquery.min.js"
     ],
     "operations": [
