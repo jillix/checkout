@@ -1,4 +1,4 @@
-var Notification = {
+module.exports = Notification = {
     "new": function (message, type, classes) {
         var element = $("<p>");
 

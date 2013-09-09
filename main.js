@@ -2,6 +2,8 @@ var self;
 var form;
 var config;
 
+var Notification = require("./notification");
+
 module.exports = function init (conf) {
 
     self = this;
