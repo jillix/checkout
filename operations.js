@@ -173,7 +173,7 @@ exports.getPageData = function(link) {
             }
 
             if (pageData.page === "confirmation" && !paid) {
-                pageData.page = "payment";
+                pageData.page = "review";
             }
 
             // validate limits
