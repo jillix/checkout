@@ -35,7 +35,7 @@ exports.sign = function (obj, pass) {
     }
 
     // create the hash to upper case
-    uObj.SHASIGN = crypto.createHash("sha1").update(text).digest("hex").toUpperCase();
+    uObj.SHASIGN = crypto.createHash("sha1").update(text, "utf8").digest("hex").toUpperCase();
 
     return uObj;
 };
